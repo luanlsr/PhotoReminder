@@ -34,8 +34,42 @@ type Message = {
   created_at: string;
 };
 
+const loginPhotos = [
+  {
+    src: "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=900&q=85",
+    alt: "Casal caminhando ao ar livre",
+    className: "login-photo--portrait login-photo--one",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=1000&q=85",
+    alt: "Noivos celebrando juntos",
+    className: "login-photo--landscape login-photo--two",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=900&q=85",
+    alt: "Buquê de casamento",
+    className: "login-photo--square login-photo--three",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=900&q=85",
+    alt: "Mesa decorada para casamento",
+    className: "login-photo--portrait login-photo--four",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1507504031003-b417219a0fde?auto=format&fit=crop&w=1000&q=85",
+    alt: "Casal em um momento romântico",
+    className: "login-photo--landscape login-photo--five",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1544078751-58fee2d8a03b?auto=format&fit=crop&w=900&q=85",
+    alt: "Mãos de um casal",
+    className: "login-photo--square login-photo--six",
+  },
+];
+
 export default function Home() {
   const { data: session, status } = useSession();
+  const [authError, setAuthError] = useState("");
 
   // Tab State
   const [activeTab, setActiveTab] = useState<"home" | "gallery" | "messages" | "profile">("home");
@@ -64,6 +98,11 @@ export default function Home() {
   const [selectedMedia, setSelectedMedia] = useState<Photo | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleGoogleSignIn = () => {
+    const callbackUrl = typeof window === "undefined" ? "/" : window.location.origin;
+    signIn("google", { callbackUrl });
+  };
 
   const handleLike = async (photoId: string) => {
     if (!session?.user?.email) return;
@@ -147,6 +186,27 @@ export default function Home() {
       fetchMessages();
     }
   }, [session]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const error = new URLSearchParams(window.location.search).get("error");
+    if (!error) {
+      setAuthError("");
+      return;
+    }
+
+    const messages: Record<string, string> = {
+      OAuthCallback: "Não foi possível concluir o retorno do Google. Tente entrar novamente pela mesma aba.",
+      OAuthSignin: "Não foi possível iniciar o login com Google. Verifique a configuração do OAuth.",
+      OAuthAccountNotLinked: "Este e-mail já existe com outro método de login.",
+      AccessDenied: "O acesso foi recusado para esta conta.",
+      Configuration: "A configuração do login com Google precisa ser revisada.",
+      Verification: "O link de login expirou. Tente novamente.",
+    };
+
+    setAuthError(messages[error] || "Não foi possível entrar com Google. Tente novamente.");
+  }, []);
 
   // --- Upload Logic ---
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -257,22 +317,53 @@ export default function Home() {
 
   if (!session) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-[#faf9f8]">
+      <main className="login-page">
+        <div className="login-collage" aria-hidden="true">
+          <div className="login-collage__track">
+            {[...loginPhotos, ...loginPhotos].map((photo, index) => (
+              <div className={`login-photo ${photo.className}`} key={`${photo.src}-${index}`}>
+                <img src={photo.src} alt="" loading={index < 6 ? "eager" : "lazy"} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="login-page__glow login-page__glow--top" aria-hidden="true" />
+        <div className="login-page__glow login-page__glow--bottom" aria-hidden="true" />
+
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="bg-white p-8 rounded-3xl shadow-xl flex flex-col items-center max-w-sm w-full text-center"
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="login-card"
         >
-          <Heart className="w-12 h-12 text-wedding-gold mb-6" />
-          <h1 className="font-serif text-3xl font-medium mb-4 text-wedding-dark">Laís & Luan</h1>
-          <p className="text-gray-600 mb-8 font-sans">
-            Faça login para compartilhar as fotos que você tirou e ver a galeria com todos os convidados!
+          <div className="login-card__eyebrow">
+            <span className="login-card__line" />
+            <span>Nosso álbum</span>
+            <span className="login-card__line" />
+          </div>
+
+          <div className="login-card__heart" aria-hidden="true">
+            <Heart className="h-5 w-5 fill-current" />
+          </div>
+          <h1 className="login-card__title">Laís <span>&</span> Luan</h1>
+          <p className="login-card__date">Um lugar para guardar cada instante</p>
+
+          <div className="login-card__divider" aria-hidden="true">
+            <span />
+            <Heart className="h-3 w-3 fill-current" />
+            <span />
+          </div>
+
+          <p className="login-card__description">
+            Entre para compartilhar suas fotos e reviver a nossa história com todos os convidados.
           </p>
+
           <button
-            onClick={() => signIn("google")}
-            className="w-full bg-wedding-dark text-white font-medium py-4 rounded-full flex items-center justify-center gap-2 transition-transform active:scale-95"
+            onClick={handleGoogleSignIn}
+            className="login-card__button"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
@@ -280,6 +371,14 @@ export default function Home() {
             </svg>
             Entrar com Google
           </button>
+
+          {authError && (
+            <p className="login-card__error" role="alert">
+              {authError}
+            </p>
+          )}
+
+          <p className="login-card__hint">Apenas convidados podem acessar o álbum</p>
         </motion.div>
       </main>
     );
