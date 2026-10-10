@@ -34,38 +34,20 @@ type Message = {
   created_at: string;
 };
 
-const loginPhotos = [
-  {
-    src: "https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=900&q=85",
-    alt: "Casal caminhando ao ar livre",
-    className: "login-photo--portrait login-photo--one",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=1000&q=85",
-    alt: "Noivos celebrando juntos",
-    className: "login-photo--landscape login-photo--two",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=900&q=85",
-    alt: "Buquê de casamento",
-    className: "login-photo--square login-photo--three",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=900&q=85",
-    alt: "Mesa decorada para casamento",
-    className: "login-photo--portrait login-photo--four",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1507504031003-b417219a0fde?auto=format&fit=crop&w=1000&q=85",
-    alt: "Casal em um momento romântico",
-    className: "login-photo--landscape login-photo--five",
-  },
-  {
-    src: "https://images.unsplash.com/photo-1544078751-58fee2d8a03b?auto=format&fit=crop&w=900&q=85",
-    alt: "Mãos de um casal",
-    className: "login-photo--square login-photo--six",
-  },
+const loginPhotoStyles = [
+  "login-photo--portrait login-photo--one",
+  "login-photo--landscape login-photo--two",
+  "login-photo--square login-photo--three",
+  "login-photo--portrait login-photo--four",
+  "login-photo--landscape login-photo--five",
+  "login-photo--square login-photo--six",
 ];
+
+const loginPhotos = Array.from({ length: 19 }, (_, index) => ({
+  src: `/image/login-${String(index + 1).padStart(2, "0")}.jpg`,
+  alt: `Foto do casal ${index + 1}`,
+  className: loginPhotoStyles[index % loginPhotoStyles.length],
+}));
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -319,9 +301,17 @@ export default function Home() {
     return (
       <main className="login-page">
         <div className="login-collage" aria-hidden="true">
-          <div className="login-collage__track">
+          <div className="login-collage__track login-collage__track--top">
             {[...loginPhotos, ...loginPhotos].map((photo, index) => (
-              <div className={`login-photo ${photo.className}`} key={`${photo.src}-${index}`}>
+              <div className={`login-photo ${photo.className}`} key={`top-${photo.src}-${index}`}>
+                <img src={photo.src} alt="" loading={index < 6 ? "eager" : "lazy"} />
+              </div>
+            ))}
+          </div>
+
+          <div className="login-collage__track login-collage__track--bottom">
+            {[...loginPhotos, ...loginPhotos].map((photo, index) => (
+              <div className={`login-photo ${photo.className}`} key={`bottom-${photo.src}-${index}`}>
                 <img src={photo.src} alt="" loading={index < 6 ? "eager" : "lazy"} />
               </div>
             ))}

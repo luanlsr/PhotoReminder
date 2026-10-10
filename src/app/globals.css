@@ -30,7 +30,7 @@ body {
   overflow: hidden;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   padding: clamp(1.25rem, 5vw, 4rem);
   background: #312326;
 }
@@ -64,6 +64,10 @@ body {
   padding: 4vh 1.5rem;
   animation: login-collage-drift 115s linear infinite;
   will-change: transform;
+}
+
+.login-collage__track--bottom {
+  display: none;
 }
 
 .login-photo {
@@ -119,6 +123,8 @@ body {
 }
 
 .login-card {
+  position: relative;
+  z-index: 1;
   width: min(100%, 28rem);
   padding: clamp(2rem, 5vw, 3.25rem) clamp(1.5rem, 5vw, 3rem);
   color: #fff8f4;
@@ -158,21 +164,68 @@ body {
 .login-card__hint { margin: 1.15rem 0 0; color: rgba(255,248,244,.5); font-size: .68rem; letter-spacing: .03em; }
 
 @media (max-width: 640px) {
-  .login-page { align-items: flex-end; padding: 1rem; }
-  .login-collage::after { background: linear-gradient(180deg, rgba(37, 21, 24, .15) 0%, rgba(49, 29, 33, .34) 30%, rgba(49, 29, 33, .9) 73%, rgba(49, 29, 33, .98) 100%); }
-  .login-collage__track { padding-top: 1.5rem; padding-bottom: 20vh; }
-  .login-photo--portrait { width: 10rem; height: 16rem; }
-  .login-photo--landscape { width: 14rem; height: 9.5rem; }
-  .login-photo--square { width: 11rem; height: 11rem; }
-  .login-photo--two { margin-top: 4rem; }
-  .login-photo--three { margin-top: -4rem; }
-  .login-photo--four { margin-top: 2rem; }
-  .login-photo--five { margin-top: -3rem; }
-  .login-photo--six { margin-top: 3rem; }
-  .login-card { padding: 1.5rem 1.35rem 1.35rem; border-radius: 1.5rem; }
-  .login-card__heart { margin-top: 1.15rem; }
-  .login-card__divider { margin: 1.15rem auto; }
-  .login-card__description { margin-bottom: 1.25rem; }
+  .login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: #312326;
+  }
+  .login-collage {
+    display: block;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #312326;
+  }
+  .login-collage::after {
+    display: none;
+  }
+  .login-collage__track {
+    position: absolute;
+    left: 0;
+    align-items: center;
+    gap: .9rem;
+    width: max-content;
+    height: 10.5rem;
+    min-height: 10.5rem;
+    max-height: 10.5rem;
+    overflow: visible;
+    padding: .25rem 0;
+    animation-duration: 90s;
+  }
+  .login-collage__track--top {
+    top: 1rem;
+  }
+  .login-collage__track--bottom {
+    display: flex;
+    bottom: 1rem;
+    animation-direction: reverse;
+  }
+  .login-photo { border-width: .32rem; box-shadow: 0 .9rem 1.8rem rgba(20, 8, 10, .28); }
+  .login-photo--portrait { width: 8.4rem; height: 12rem; }
+  .login-photo--landscape { width: 12.6rem; height: 8.4rem; }
+  .login-photo--square { width: 9.8rem; height: 9.8rem; }
+  .login-photo--two,
+  .login-photo--three,
+  .login-photo--four,
+  .login-photo--five,
+  .login-photo--six { margin-top: 0; }
+  .login-page__glow { display: none; }
+  .login-card {
+    width: min(calc(100vw - 1.5rem), 28rem);
+    padding: 1.05rem 1.15rem 1rem;
+    border-radius: 1.35rem;
+  }
+  .login-card__eyebrow { font-size: .56rem; gap: .55rem; }
+  .login-card__line { width: 1.25rem; }
+  .login-card__heart { margin: .85rem auto .65rem; }
+  .login-card__title { font-size: 2.25rem; }
+  .login-card__date { margin-top: .6rem; font-size: .9rem; }
+  .login-card__divider { margin: .85rem auto; width: 68%; }
+  .login-card__description { margin-bottom: .95rem; font-size: .8rem; line-height: 1.55; }
+  .login-card__button { padding: .82rem 1rem; font-size: .84rem; }
+  .login-card__hint { margin-top: .85rem; font-size: .62rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
