@@ -6,15 +6,15 @@
   --font-sans: var(--font-inter);
   --font-serif: var(--font-playfair);
   
-  --color-wedding-gold: #d4af37;
-  --color-wedding-gold-light: #f3e5ab;
-  --color-wedding-rose: #f4e8e8;
-  --color-wedding-dark: #2c2a2a;
+  --color-wedding-gold: #6f7f3f;
+  --color-wedding-gold-light: #dfe6c7;
+  --color-wedding-rose: #eef2df;
+  --color-wedding-dark: #24301f;
 }
 
 body {
-  background-color: #faf9f8;
-  color: #2c2a2a;
+  background-color: #f6f7ef;
+  color: #24301f;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -32,7 +32,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: clamp(1.25rem, 5vw, 4rem);
-  background: #312326;
+  background: #24301f;
 }
 
 .login-collage,
@@ -44,15 +44,15 @@ body {
 .login-collage {
   z-index: -3;
   overflow: hidden;
-  background: #6a4c4a;
+  background: #46532f;
 }
 
 .login-collage::after {
   content: "";
   z-index: 2;
   background:
-    linear-gradient(90deg, rgba(34, 22, 25, .82) 0%, rgba(49, 29, 33, .54) 38%, rgba(49, 29, 33, .18) 72%, rgba(49, 29, 33, .4) 100%),
-    linear-gradient(180deg, rgba(28, 17, 19, .28), rgba(62, 33, 37, .3));
+    linear-gradient(90deg, rgba(24, 35, 18, .82) 0%, rgba(36, 48, 31, .54) 38%, rgba(36, 48, 31, .18) 72%, rgba(36, 48, 31, .4) 100%),
+    linear-gradient(180deg, rgba(24, 35, 18, .28), rgba(78, 94, 53, .3));
 }
 
 .login-collage__track {
@@ -75,8 +75,8 @@ body {
   overflow: hidden;
   position: relative;
   border: .55rem solid rgba(255,255,255,.92);
-  background: #e5d4d0;
-  box-shadow: 0 1.5rem 3rem rgba(30, 15, 16, .28);
+  background: #dfe6c7;
+  box-shadow: 0 1.5rem 3rem rgba(24, 35, 18, .28);
   transform: rotate(var(--rotation));
 }
 
@@ -111,7 +111,7 @@ body {
   left: 38%;
   width: 38rem;
   height: 28rem;
-  background: rgba(236, 182, 157, .22);
+  background: rgba(223, 230, 199, .25);
 }
 
 .login-page__glow--bottom {
@@ -119,7 +119,7 @@ body {
   right: 4%;
   width: 32rem;
   height: 30rem;
-  background: rgba(163, 100, 116, .2);
+  background: rgba(111, 127, 63, .22);
 }
 
 .login-card {
@@ -127,12 +127,12 @@ body {
   z-index: 1;
   width: min(100%, 28rem);
   padding: clamp(2rem, 5vw, 3.25rem) clamp(1.5rem, 5vw, 3rem);
-  color: #fff8f4;
+  color: #f6f7ef;
   text-align: center;
   border: 1px solid rgba(255,255,255,.3);
   border-radius: 2rem;
-  background: rgba(53, 29, 34, .58);
-  box-shadow: 0 2rem 5rem rgba(18, 8, 10, .3), inset 0 1px rgba(255,255,255,.16);
+  background: rgba(36, 48, 31, .66);
+  box-shadow: 0 2rem 5rem rgba(18, 27, 14, .3), inset 0 1px rgba(255,255,255,.16);
   backdrop-filter: blur(16px);
 }
 
@@ -141,7 +141,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: .7rem;
-  color: #eec7b5;
+  color: #dfe6c7;
   font-size: .64rem;
   font-weight: 700;
   letter-spacing: .25em;
@@ -149,19 +149,19 @@ body {
   text-transform: uppercase;
 }
 
-.login-card__line { width: 1.6rem; height: 1px; background: rgba(238,199,181,.7); }
-.login-card__heart { margin: 1.8rem auto .85rem; color: #edb6aa; }
+.login-card__line { width: 1.6rem; height: 1px; background: rgba(223,230,199,.75); }
+.login-card__heart { margin: 1.8rem auto .85rem; color: #dfe6c7; }
 .login-card__title { margin: 0; font-family: var(--font-playfair); font-size: clamp(2.5rem, 6vw, 3.65rem); font-weight: 500; letter-spacing: -.04em; line-height: .95; }
-.login-card__title span { color: #e8b59d; font-style: italic; }
-.login-card__date { margin: .9rem 0 0; color: #eacfc4; font-family: var(--font-playfair); font-size: 1rem; font-style: italic; }
-.login-card__divider { display: flex; align-items: center; gap: .7rem; margin: 1.8rem auto; width: 75%; color: #edb6aa; }
+.login-card__title span { color: #dfe6c7; font-style: italic; }
+.login-card__date { margin: .9rem 0 0; color: #eef2df; font-family: var(--font-playfair); font-size: 1rem; font-style: italic; }
+.login-card__divider { display: flex; align-items: center; gap: .7rem; margin: 1.8rem auto; width: 75%; color: #dfe6c7; }
 .login-card__divider span { height: 1px; flex: 1; background: rgba(255,255,255,.25); }
-.login-card__description { margin: 0 auto 1.75rem; max-width: 19rem; color: rgba(255,248,244,.78); font-size: .88rem; line-height: 1.7; }
-.login-card__button { width: 100%; display: flex; align-items: center; justify-content: center; gap: .65rem; padding: 1rem 1.25rem; border: 0; border-radius: 999px; background: #fffaf7; color: #3f282a; font-size: .92rem; font-weight: 700; box-shadow: 0 .75rem 1.5rem rgba(20, 8, 10, .2); transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
-.login-card__button:hover { background: #fff; box-shadow: 0 1rem 2rem rgba(20, 8, 10, .3); transform: translateY(-2px); }
+.login-card__description { margin: 0 auto 1.75rem; max-width: 19rem; color: rgba(246,247,239,.82); font-size: .88rem; line-height: 1.7; }
+.login-card__button { width: 100%; display: flex; align-items: center; justify-content: center; gap: .65rem; padding: 1rem 1.25rem; border: 0; border-radius: 999px; background: #f6f7ef; color: #24301f; font-size: .92rem; font-weight: 700; box-shadow: 0 .75rem 1.5rem rgba(18, 27, 14, .2); transition: transform .2s ease, box-shadow .2s ease, background .2s ease; }
+.login-card__button:hover { background: #fff; box-shadow: 0 1rem 2rem rgba(18, 27, 14, .3); transform: translateY(-2px); }
 .login-card__button:active { transform: scale(.98); }
 .login-card__error { margin: 1rem 0 0; padding: .85rem 1rem; border: 1px solid rgba(255,215,204,.35); border-radius: 1rem; background: rgba(92, 27, 34, .48); color: #ffe2dc; font-size: .78rem; line-height: 1.45; }
-.login-card__hint { margin: 1.15rem 0 0; color: rgba(255,248,244,.5); font-size: .68rem; letter-spacing: .03em; }
+.login-card__hint { margin: 1.15rem 0 0; color: rgba(246,247,239,.55); font-size: .68rem; letter-spacing: .03em; }
 
 @media (max-width: 640px) {
   .login-page {
@@ -169,14 +169,14 @@ body {
     align-items: center;
     justify-content: center;
     padding: 1rem;
-    background: #312326;
+    background: #24301f;
   }
   .login-collage {
     display: block;
     position: absolute;
     inset: 0;
     overflow: hidden;
-    background: #312326;
+    background: #24301f;
   }
   .login-collage::after {
     display: none;

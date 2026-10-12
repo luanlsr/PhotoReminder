@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
-import { Camera, Image as ImageIcon, UploadCloud, X, CheckCircle2, Heart, AlertCircle, LogOut, Home as HomeIcon, LayoutGrid, MessageSquare, User, Send, Users, Film, Share2 } from "lucide-react";
+import { Camera, Image as ImageIcon, UploadCloud, X, CheckCircle2, Heart, AlertCircle, LogOut, Home as HomeIcon, LayoutGrid, MessageSquare, User, Send, Users, Film, Share2, Bell, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signIn, signOut } from "next-auth/react";
 
@@ -39,12 +39,26 @@ type Message = {
   created_at: string;
 };
 
+type Activity = {
+  id: string;
+  type: "like" | "comment";
+  photo_id: string;
+  photo_url: string;
+  actor_name: string;
+  actor_email?: string;
+  actor_image?: string;
+  text?: string;
+  created_at: string;
+};
+
 type SessionUserWithId = {
   id?: string;
   name?: string | null;
   email?: string | null;
   image?: string | null;
 };
+
+const ADMIN_EMAIL = "luan.ramalhosilva@gmail.com";
 
 const loginPhotoStyles = [
   "login-photo--portrait login-photo--one",
@@ -74,8 +88,11 @@ export default function Home() {
   // Data State
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
+  const [loadingActivities, setLoadingActivities] = useState(false);
   const [contentError, setContentError] = useState("");
+  const [selectedAlbumUserKey, setSelectedAlbumUserKey] = useState<string | null>(null);
 
   // Upload State
   const [files, setFiles] = useState<File[]>([]);
@@ -110,6 +127,51 @@ export default function Home() {
       (userId && user?.id && userId === user.id) ||
       (email && user?.email && email === user.email)
     );
+  };
+
+  const isAdmin = getSessionUser()?.email?.toLowerCase() === ADMIN_EMAIL;
+
+  const getPhotoOwnerKey = (photo: Photo) => {
+    return photo.user_id || photo.guest_email || photo.name;
+  };
+
+  const getVisibleGalleryPhotos = () => {
+    if (!isAdmin) {
+      return photos.filter((photo) => isCurrentUser(photo.user_id, photo.guest_email));
+    }
+
+    if (selectedAlbumUserKey) {
+      return photos.filter((photo) => getPhotoOwnerKey(photo) === selectedAlbumUserKey);
+    }
+
+    return photos;
+  };
+
+  const getAdminAlbums = () => {
+    const albums = new Map<string, { key: string; name: string; email?: string; photos: Photo[]; cover: Photo }>();
+
+    photos.forEach((photo) => {
+      const key = getPhotoOwnerKey(photo);
+      const current = albums.get(key);
+
+      if (!current) {
+        albums.set(key, {
+          key,
+          name: photo.name || "Convidado",
+          email: photo.guest_email,
+          photos: [photo],
+          cover: photo,
+        });
+        return;
+      }
+
+      current.photos.push(photo);
+      if (new Date(photo.createdAt).getTime() > new Date(current.cover.createdAt).getTime()) {
+        current.cover = photo;
+      }
+    });
+
+    return Array.from(albums.values()).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
   };
 
   const isPhotoLikedByCurrentUser = (photo: Photo) => {
@@ -156,6 +218,7 @@ export default function Home() {
 
       if (res.ok) {
         fetchPhotos(); // Atualiza contagem de likes
+        fetchActivities();
       }
     } catch (error) {
       console.error("Erro ao curtir:", error);
@@ -183,6 +246,7 @@ export default function Home() {
       if (res.ok) {
         setNewComment("");
         fetchPhotos(); // Recarrega para mostrar o comentário
+        fetchActivities();
         // Opcional: atualizar o selectedPhotoForComments também
         const data = await res.json();
         if (selectedPhotoForComments) {
@@ -228,10 +292,36 @@ export default function Home() {
     }
   };
 
+  const fetchActivities = async () => {
+    const user = getSessionUser();
+    if (!user?.email) return;
+
+    setLoadingActivities(true);
+    try {
+      const params = new URLSearchParams({
+        email: user.email,
+        userId: user.id || "",
+      });
+      const res = await fetch(`/api/notifications?${params.toString()}`, { cache: "no-store" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao carregar notificações");
+      }
+
+      setActivities(data.activities || []);
+    } catch (error) {
+      console.error("Erro ao carregar notificações:", error);
+    } finally {
+      setLoadingActivities(false);
+    }
+  };
+
   useEffect(() => {
     if (session) {
       fetchPhotos();
       fetchMessages();
+      fetchActivities();
     }
   }, [session]);
 
@@ -363,7 +453,7 @@ export default function Home() {
 
   // --- Renders de Autenticação ---
   if (status === "loading") {
-    return <div className="min-h-screen flex items-center justify-center bg-[#faf9f8]">Carregando...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-[#f6f7ef]">Carregando...</div>;
   }
 
   if (!session) {
@@ -459,7 +549,7 @@ export default function Home() {
 
   // --- Render Tabs ---
   return (
-    <main className="flex flex-col h-[100dvh] bg-[#faf9f8] overflow-hidden relative">
+    <main className="flex flex-col h-[100dvh] bg-[#f6f7ef] overflow-hidden relative">
 
       {/* Esconder a UI principal se estiver na tela de envio (com arquivos selecionados) */}
       {!files.length && !isSuccess && (
@@ -590,38 +680,92 @@ export default function Home() {
           {activeTab === "gallery" && (
             <div className="flex flex-col bg-white min-h-full">
               <div className="sticky top-0 bg-white z-10">
-                <div className="flex justify-around items-center border-b border-gray-200">
-                  <button
-                    onClick={() => setGallerySubTab("all")}
-                    className={`flex-1 py-3 flex justify-center border-b-2 ${gallerySubTab === 'all' ? 'border-[#fc7474]' : 'border-transparent'}`}
-                  >
-                    <LayoutGrid className={`w-6 h-6 ${gallerySubTab === 'all' ? 'text-gray-800' : 'text-gray-300'}`} />
-                  </button>
-                  <button
-                    onClick={() => setGallerySubTab("videos")}
-                    className={`flex-1 py-3 flex justify-center border-b-2 ${gallerySubTab === 'videos' ? 'border-[#fc7474]' : 'border-transparent'}`}
-                  >
-                    <Film className={`w-6 h-6 ${gallerySubTab === 'videos' ? 'text-gray-800' : 'text-gray-300'}`} />
-                  </button>
-                  <button
-                    onClick={() => setGallerySubTab("likes")}
-                    className={`flex-1 py-3 flex justify-center border-b-2 ${gallerySubTab === 'likes' ? 'border-[#fc7474]' : 'border-transparent'}`}
-                  >
-                    <Heart className={`w-6 h-6 ${gallerySubTab === 'likes' ? 'text-gray-800' : 'text-gray-300'}`} />
-                  </button>
-                </div>
+                {isAdmin && selectedAlbumUserKey ? (
+                  <div className="flex items-center gap-3 border-b border-gray-200 p-3">
+                    <button
+                      onClick={() => setSelectedAlbumUserKey(null)}
+                      className="p-2 rounded-full bg-wedding-rose text-wedding-dark"
+                    >
+                      <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <div>
+                      <h2 className="font-serif text-xl text-wedding-dark">
+                        {getVisibleGalleryPhotos()[0]?.name || "Convidado"}
+                      </h2>
+                      <p className="text-xs text-gray-500">{getVisibleGalleryPhotos().length} mídias compartilhadas</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-around items-center border-b border-gray-200">
+                    <button
+                      onClick={() => setGallerySubTab("all")}
+                      className={`flex-1 py-3 flex justify-center border-b-2 ${gallerySubTab === 'all' ? 'border-[#6f7f3f]' : 'border-transparent'}`}
+                    >
+                      <LayoutGrid className={`w-6 h-6 ${gallerySubTab === 'all' ? 'text-gray-800' : 'text-gray-300'}`} />
+                    </button>
+                    <button
+                      onClick={() => setGallerySubTab("videos")}
+                      className={`flex-1 py-3 flex justify-center border-b-2 ${gallerySubTab === 'videos' ? 'border-[#6f7f3f]' : 'border-transparent'}`}
+                    >
+                      <Film className={`w-6 h-6 ${gallerySubTab === 'videos' ? 'text-gray-800' : 'text-gray-300'}`} />
+                    </button>
+                    <button
+                      onClick={() => setGallerySubTab("likes")}
+                      className={`flex-1 py-3 flex justify-center border-b-2 ${gallerySubTab === 'likes' ? 'border-[#6f7f3f]' : 'border-transparent'}`}
+                    >
+                      <Heart className={`w-6 h-6 ${gallerySubTab === 'likes' ? 'text-gray-800' : 'text-gray-300'}`} />
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-3 gap-[2px] p-[2px]">
-                {loadingPhotos ? (
-                  <div className="col-span-3 text-center p-8 text-gray-400">Carregando galeria...</div>
-                ) : (
-                  photos
-                    .filter(p => {
+              {isAdmin && !selectedAlbumUserKey ? (
+                <div className="grid grid-cols-2 gap-3 p-4">
+                  {loadingPhotos ? (
+                    <div className="col-span-2 text-center p-8 text-gray-400">Carregando álbuns...</div>
+                  ) : getAdminAlbums().length === 0 ? (
+                    <div className="col-span-2 text-center p-8 text-gray-400">Nenhuma foto compartilhada ainda.</div>
+                  ) : (
+                    getAdminAlbums().map((album) => (
+                      <button
+                        key={album.key}
+                        onClick={() => setSelectedAlbumUserKey(album.key)}
+                        className="overflow-hidden rounded-3xl bg-white text-left shadow-sm border border-gray-100 active:scale-[0.98] transition-transform"
+                      >
+                        <div className="relative aspect-[4/5] bg-gray-100">
+                          {album.cover.media_type === "video" ? (
+                            <video src={album.cover.url} className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={album.cover.url} alt={album.name} loading="lazy" className="w-full h-full object-cover" />
+                          )}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-3 text-white">
+                            <h3 className="font-semibold leading-tight">{album.name}</h3>
+                            <p className="text-xs opacity-80">{album.photos.length} mídias</p>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-[2px] p-[2px]">
+                  {loadingPhotos ? (
+                    <div className="col-span-3 text-center p-8 text-gray-400">Carregando galeria...</div>
+                  ) : getVisibleGalleryPhotos().filter(p => {
                       if (gallerySubTab === 'videos') return p.media_type === 'video';
                       if (gallerySubTab === 'likes') return isPhotoLikedByCurrentUser(p);
                       return true;
-                    })
+                    }).length === 0 ? (
+                    <div className="col-span-3 text-center p-8 text-gray-400">
+                      {isAdmin ? "Este convidado ainda não tem fotos nesta categoria." : "Você ainda não enviou fotos nesta categoria."}
+                    </div>
+                  ) : (
+                    getVisibleGalleryPhotos()
+                      .filter(p => {
+                        if (gallerySubTab === 'videos') return p.media_type === 'video';
+                        if (gallerySubTab === 'likes') return isPhotoLikedByCurrentUser(p);
+                        return true;
+                      })
                     .map((photo) => (
                       <div 
                         key={photo.id} 
@@ -645,8 +789,9 @@ export default function Home() {
                         )}
                       </div>
                     ))
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -670,7 +815,7 @@ export default function Home() {
                   <div className="flex justify-end">
                     <button
                       disabled={isSendingMessage || !newMessage.trim()}
-                      className="bg-[#fc7474] text-white px-5 py-2 rounded-full font-medium text-sm flex items-center gap-2 disabled:opacity-50 transition-opacity"
+                      className="bg-[#6f7f3f] text-white px-5 py-2 rounded-full font-medium text-sm flex items-center gap-2 disabled:opacity-50 transition-opacity"
                     >
                       {isSendingMessage ? 'Enviando...' : <><Send className="w-4 h-4" /> Enviar</>}
                     </button>
@@ -710,19 +855,19 @@ export default function Home() {
 
           {/* TAB PROFILE */}
           {activeTab === "profile" && (
-            <div className="flex flex-col items-center justify-center p-6 h-full">
+            <div className="flex flex-col items-center p-6 min-h-full gap-4">
               <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center w-full max-w-sm">
                 {session.user?.image ? (
-                  <img src={session.user.image} alt={session.user.name || "User"} className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-[#fc7474]/20" referrerPolicy="no-referrer" />
+                  <img src={session.user.image} alt={session.user.name || "User"} className="w-24 h-24 rounded-full mx-auto mb-4 border-4 border-[#6f7f3f]/20" referrerPolicy="no-referrer" />
                 ) : (
-                  <div className="w-24 h-24 bg-[#fc7474]/10 rounded-full flex items-center justify-center mb-4">
-                    <User className="w-10 h-10 text-[#fc7474]" />
+                  <div className="w-24 h-24 bg-[#6f7f3f]/10 rounded-full flex items-center justify-center mb-4">
+                    <User className="w-10 h-10 text-[#6f7f3f]" />
                   </div>
                 )}
                 <h2 className="font-serif text-2xl text-gray-900 mb-1">{session.user?.name}</h2>
                 <p className="text-gray-500 text-sm mb-8">{session.user?.email}</p>
 
-                {session.user?.email === 'luan.ramalhosilva@gmail.com' && (
+                {isAdmin && (
                   <button
                     onClick={() => window.open('/slideshow', '_blank')}
                     className="w-full bg-wedding-dark text-wedding-gold font-medium py-4 rounded-full flex items-center justify-center gap-2 mb-3 shadow-lg shadow-wedding-dark/20 hover:scale-[1.02] transition-transform"
@@ -739,6 +884,51 @@ export default function Home() {
                   <LogOut className="w-5 h-5" />
                   Sair da Conta
                 </button>
+              </div>
+
+              <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 w-full max-w-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-wedding-gold" />
+                    <h3 className="font-serif text-xl text-wedding-dark">Notificações</h3>
+                  </div>
+                  {activities.length > 0 && (
+                    <span className="rounded-full bg-wedding-rose px-2 py-1 text-xs font-semibold text-wedding-dark">
+                      {activities.length}
+                    </span>
+                  )}
+                </div>
+
+                {loadingActivities ? (
+                  <p className="py-5 text-center text-sm text-gray-400">Carregando novidades...</p>
+                ) : activities.length === 0 ? (
+                  <p className="py-5 text-center text-sm text-gray-400">Quando alguém curtir ou comentar uma foto sua, vai aparecer aqui.</p>
+                ) : (
+                  <div className="flex flex-col gap-3">
+                    {activities.map((activity) => (
+                      <button
+                        key={activity.id}
+                        onClick={() => {
+                          const photo = photos.find((item) => item.id === activity.photo_id);
+                          if (photo) setSelectedMedia(photo);
+                        }}
+                        className="flex items-center gap-3 rounded-2xl bg-[#f6f7ef] p-3 text-left"
+                      >
+                        <img src={activity.photo_url} alt="" className="h-14 w-14 rounded-xl object-cover" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-gray-800">
+                            <span className="font-semibold">{activity.actor_name}</span>{" "}
+                            {activity.type === "like" ? "curtiu sua foto" : "comentou na sua foto"}
+                          </p>
+                          {activity.text && <p className="truncate text-xs text-gray-500">“{activity.text}”</p>}
+                          <p className="mt-1 text-[11px] text-gray-400">
+                            {new Date(activity.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -762,7 +952,7 @@ export default function Home() {
             initial={{ opacity: 0, y: "100%" }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: "100%" }}
-            className="fixed inset-0 z-50 bg-[#faf9f8] flex flex-col"
+            className="fixed inset-0 z-50 bg-[#f6f7ef] flex flex-col"
           >
             <div className="pt-12 pb-4 px-6 flex justify-between items-center bg-white border-b border-gray-100 shadow-sm">
               <h2 className="font-serif text-xl text-wedding-dark">Fotos Selecionadas ({files.length})</h2>
@@ -810,7 +1000,7 @@ export default function Home() {
               ) : (
                 <button
                   onClick={handleUpload}
-                  className="w-full bg-[#fc7474] text-white font-medium py-4 rounded-full flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-[#fc7474]/30"
+                  className="w-full bg-[#6f7f3f] text-white font-medium py-4 rounded-full flex items-center justify-center gap-2 transition-transform active:scale-95 shadow-lg shadow-[#6f7f3f]/30"
                 >
                   <UploadCloud className="w-5 h-5" />
                   Enviar {files.length} {files.length === 1 ? 'foto' : 'fotos'}
@@ -827,7 +1017,7 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="fixed inset-0 z-50 bg-[#faf9f8] flex items-center justify-center p-6"
+            className="fixed inset-0 z-50 bg-[#f6f7ef] flex items-center justify-center p-6"
           >
             <div className="bg-white p-8 rounded-3xl shadow-xl flex flex-col items-center max-w-sm w-full text-center">
               <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
@@ -842,7 +1032,7 @@ export default function Home() {
                   setIsSuccess(false);
                   setActiveTab("home");
                 }}
-                className="w-full bg-[#fc7474] text-white font-medium py-4 rounded-full transition-transform active:scale-95"
+                className="w-full bg-[#6f7f3f] text-white font-medium py-4 rounded-full transition-transform active:scale-95"
               >
                 Voltar para o Feed
               </button>
@@ -1005,13 +1195,13 @@ export default function Home() {
                   <input
                     type="text"
                     placeholder="Escreva um comentário..."
-                    className="flex-1 bg-gray-100 rounded-full px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#fc7474]"
+                    className="flex-1 bg-gray-100 rounded-full px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#6f7f3f]"
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                   />
                   <button
                     disabled={isSendingComment || !newComment.trim()}
-                    className="bg-[#fc7474] text-white p-3 rounded-full disabled:opacity-50 transition-transform active:scale-95"
+                    className="bg-[#6f7f3f] text-white p-3 rounded-full disabled:opacity-50 transition-transform active:scale-95"
                   >
                     <Send className="w-5 h-5" />
                   </button>
@@ -1026,11 +1216,11 @@ export default function Home() {
       {!files.length && !isSuccess && (
         <nav className="fixed bottom-0 w-full h-[68px] bg-white border-t border-gray-100 z-40 flex justify-around items-center px-2 pb-safe shadow-[0_-2px_20px_rgba(0,0,0,0.03)]">
           <button onClick={() => setActiveTab("home")} className="p-3 text-gray-400">
-            <HomeIcon className={`w-7 h-7 ${activeTab === 'home' ? 'text-[#fc7474]' : ''}`} strokeWidth={activeTab === 'home' ? 2.5 : 2} />
+            <HomeIcon className={`w-7 h-7 ${activeTab === 'home' ? 'text-[#6f7f3f]' : ''}`} strokeWidth={activeTab === 'home' ? 2.5 : 2} />
           </button>
 
           <button onClick={() => setActiveTab("gallery")} className="p-3 text-gray-400">
-            <LayoutGrid className={`w-7 h-7 ${activeTab === 'gallery' ? 'text-[#fc7474]' : ''}`} strokeWidth={activeTab === 'gallery' ? 2.5 : 2} />
+            <LayoutGrid className={`w-7 h-7 ${activeTab === 'gallery' ? 'text-[#6f7f3f]' : ''}`} strokeWidth={activeTab === 'gallery' ? 2.5 : 2} />
           </button>
 
           {/* FAB Central Button */}
@@ -1043,21 +1233,24 @@ export default function Home() {
                   fileInputRef.current.click();
                 }
               }}
-              className="w-16 h-16 bg-[#fc7474] rounded-full flex items-center justify-center border-[6px] border-[#faf9f8] shadow-lg shadow-[#fc7474]/30 active:scale-95 transition-transform"
+              className="w-16 h-16 bg-[#6f7f3f] rounded-full flex items-center justify-center border-[6px] border-[#f6f7ef] shadow-lg shadow-[#6f7f3f]/30 active:scale-95 transition-transform"
             >
               <Camera className="w-6 h-6 text-white" />
             </button>
           </div>
 
           <button onClick={() => setActiveTab("messages")} className="p-3 text-gray-400">
-            <MessageSquare className={`w-7 h-7 ${activeTab === 'messages' ? 'text-[#fc7474]' : ''}`} strokeWidth={activeTab === 'messages' ? 2.5 : 2} />
+            <MessageSquare className={`w-7 h-7 ${activeTab === 'messages' ? 'text-[#6f7f3f]' : ''}`} strokeWidth={activeTab === 'messages' ? 2.5 : 2} />
           </button>
 
-          <button onClick={() => setActiveTab("profile")} className="p-3">
+          <button onClick={() => setActiveTab("profile")} className="relative p-3">
+            {activities.length > 0 && (
+              <span className="absolute right-2 top-2 h-3 w-3 rounded-full border-2 border-white bg-wedding-gold" />
+            )}
             {session.user?.image ? (
-              <img src={session.user.image} className={`w-8 h-8 rounded-full border-2 ${activeTab === 'profile' ? 'border-[#fc7474]' : 'border-transparent'}`} alt="Perfil" referrerPolicy="no-referrer" />
+              <img src={session.user.image} className={`w-8 h-8 rounded-full border-2 ${activeTab === 'profile' ? 'border-[#6f7f3f]' : 'border-transparent'}`} alt="Perfil" referrerPolicy="no-referrer" />
             ) : (
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${activeTab === 'profile' ? 'border-[#fc7474]' : 'border-transparent'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${activeTab === 'profile' ? 'border-[#6f7f3f]' : 'border-transparent'}`}>
                 <User className="w-6 h-6 text-gray-400" />
               </div>
             )}
