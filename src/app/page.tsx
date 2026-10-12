@@ -510,7 +510,7 @@ export default function Home() {
             <Heart className="h-5 w-5 fill-current" />
           </div>
           <h1 className="login-card__title">Laís <span>&</span> Luan</h1>
-          <p className="login-card__date">Um lugar para guardar cada instante</p>
+          <p className="login-card__date">Compartilhe conosco os seus registros</p>
 
           <div className="login-card__divider" aria-hidden="true">
             <span />
@@ -519,7 +519,7 @@ export default function Home() {
           </div>
 
           <p className="login-card__description">
-            Entre para compartilhar suas fotos e reviver a nossa história com todos os convidados.
+            Use este espaço para enviar as fotos e vídeos que você fizer na cerimônia e na festa. Assim guardamos cada olhar da nossa história.
           </p>
 
           <button
@@ -541,7 +541,7 @@ export default function Home() {
             </p>
           )}
 
-          <p className="login-card__hint">Apenas convidados podem acessar o álbum</p>
+          <p className="login-card__hint">Acesso exclusivo para convidados do casamento</p>
         </motion.div>
       </main>
     );

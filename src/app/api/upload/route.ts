@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isGoogleDriveUploadConfigured, uploadToGoogleDrive } from '@/lib/google-drive';
 
 export async function POST(request: Request): Promise<NextResponse> {
   try {
@@ -40,26 +41,27 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     const uniqueFilename = `${timestamp}-${sanitizedGuestName}-${sanitizedOriginalName}.${extension}`;
 
-    // Upload para o Supabase Storage (Bucket 'wedding-photos')
-    const { data: storageData, error: storageError } = await supabase.storage
-      .from('wedding-photos')
-      .upload(uniqueFilename, request.body, {
-        contentType: fileType,
-        cacheControl: '3600',
-        upsert: false,
-        duplex: 'half' // Necessário no Next.js App Router para Streams
-      });
+    let publicUrl = '';
+    let driveFileId = '';
+    let driveViewLink = '';
 
-    if (storageError) {
-      throw storageError;
+    if (!isGoogleDriveUploadConfigured()) {
+      return NextResponse.json(
+        { error: 'Google Drive ainda não configurado. Configure GOOGLE_DRIVE_FOLDER_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL e GOOGLE_PRIVATE_KEY.' },
+        { status: 500 }
+      );
     }
 
-    // Obter URL pública da imagem
-    const { data: publicUrlData } = supabase.storage
-      .from('wedding-photos')
-      .getPublicUrl(uniqueFilename);
+    const buffer = Buffer.from(await request.arrayBuffer());
+    const driveFile = await uploadToGoogleDrive({
+      buffer,
+      filename: uniqueFilename,
+      mimeType: fileType,
+    });
 
-    const publicUrl = publicUrlData.publicUrl;
+    publicUrl = driveFile.publicUrl;
+    driveFileId = driveFile.fileId;
+    driveViewLink = driveFile.webViewLink;
 
     const guestImage = searchParams.get('guestImage') || '';
     const mediaType = fileType.startsWith('video/') ? 'video' : 'image';
@@ -68,16 +70,34 @@ export async function POST(request: Request): Promise<NextResponse> {
     let { error: dbError } = await supabase
       .from('photos')
       .insert([
-        { url: publicUrl, guest_name: guestName, guest_email: guestEmail, guest_image: guestImage, user_id: userId, media_type: mediaType }
+        {
+          url: publicUrl,
+          guest_name: guestName,
+          guest_email: guestEmail,
+          guest_image: guestImage,
+          user_id: userId,
+          media_type: mediaType,
+          drive_file_id: driveFileId || null,
+          drive_view_link: driveViewLink || null
+        }
       ]);
 
     if (dbError) {
-      const fallback = await supabase
+      const identityFallback = await supabase
+        .from('photos')
+        .insert([
+          { url: publicUrl, guest_name: guestName, guest_email: guestEmail, guest_image: guestImage, user_id: userId, media_type: mediaType }
+        ]);
+      dbError = identityFallback.error;
+    }
+
+    if (dbError) {
+      const legacyFallback = await supabase
         .from('photos')
         .insert([
           { url: publicUrl, guest_name: guestName, guest_image: guestImage, media_type: mediaType }
         ]);
-      dbError = fallback.error;
+      dbError = legacyFallback.error;
     }
 
     if (dbError) {
@@ -86,7 +106,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json({ success: true, url: publicUrl });
   } catch (error: any) {
-    console.error("Erro detalhado no upload para o Supabase:", error);
+    console.error("Erro detalhado no upload:", error);
     return NextResponse.json(
       { error: "Erro interno: " + (error.message || JSON.stringify(error) || "Desconhecido") },
       { status: 500 }

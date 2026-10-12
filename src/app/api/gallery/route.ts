@@ -46,18 +46,26 @@ export async function GET() {
     }
 
     // Formatando para o formato que o frontend espera
-    const formattedPhotos = photos.map((photo: any) => ({
-      id: photo.id,
-      name: photo.guest_name,
-      user_id: photo.user_id,
-      guest_email: photo.guest_email,
-      guest_image: photo.guest_image,
-      url: photo.url,
-      media_type: photo.media_type || 'image',
-      createdAt: photo.created_at,
-      likes: photo.likes || [],
-      comments: photo.comments || []
-    }));
+    const formattedPhotos = photos
+      .filter((photo: any) => {
+        return Boolean(
+          photo.drive_file_id ||
+          photo.drive_view_link ||
+          String(photo.url || '').includes('drive.google.com')
+        );
+      })
+      .map((photo: any) => ({
+        id: photo.id,
+        name: photo.guest_name,
+        user_id: photo.user_id,
+        guest_email: photo.guest_email,
+        guest_image: photo.guest_image,
+        url: photo.url,
+        media_type: photo.media_type || 'image',
+        createdAt: photo.created_at,
+        likes: photo.likes || [],
+        comments: photo.comments || []
+      }));
 
     return NextResponse.json({ photos: formattedPhotos });
   } catch (error) {
