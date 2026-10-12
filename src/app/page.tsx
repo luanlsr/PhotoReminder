@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { Camera, Image as ImageIcon, UploadCloud, X, CheckCircle2, Heart, AlertCircle, LogOut, Home as HomeIcon, LayoutGrid, MessageSquare, User, Send, Users, Film } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,6 +50,8 @@ const loginPhotos = Array.from({ length: 19 }, (_, index) => ({
   className: loginPhotoStyles[index % loginPhotoStyles.length],
 }));
 
+const loginCarouselPhotos = loginPhotos.slice(0, 10);
+
 export default function Home() {
   const { data: session, status } = useSession();
   const [authError, setAuthError] = useState("");
@@ -61,6 +64,7 @@ export default function Home() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(true);
+  const [contentError, setContentError] = useState("");
 
   // Upload State
   const [files, setFiles] = useState<File[]>([]);
@@ -82,8 +86,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleGoogleSignIn = () => {
-    const callbackUrl = typeof window === "undefined" ? "/" : window.location.origin;
-    signIn("google", { callbackUrl });
+    signIn("google", { callbackUrl: "/" });
   };
 
   const handleLike = async (photoId: string) => {
@@ -142,11 +145,16 @@ export default function Home() {
   // --- Fetch Data ---
   const fetchPhotos = async () => {
     try {
-      const res = await fetch("/api/gallery");
+      setContentError("");
+      const res = await fetch("/api/gallery", { cache: "no-store" });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao carregar galeria");
+      }
       if (data.photos) setPhotos(data.photos);
     } catch (error) {
       console.error("Erro ao carregar fotos:", error);
+      setContentError("Nao foi possivel carregar a galeria. Atualize a pagina ou tente novamente em alguns instantes.");
     } finally {
       setLoadingPhotos(false);
     }
@@ -154,11 +162,15 @@ export default function Home() {
 
   const fetchMessages = async () => {
     try {
-      const res = await fetch("/api/messages");
+      const res = await fetch("/api/messages", { cache: "no-store" });
       const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao carregar mensagens");
+      }
       if (data.messages) setMessages(data.messages);
     } catch (error) {
       console.error("Erro ao carregar mensagens:", error);
+      setContentError("Nao foi possivel carregar as mensagens. Atualize a pagina ou tente novamente em alguns instantes.");
     }
   };
 
@@ -302,17 +314,31 @@ export default function Home() {
       <main className="login-page">
         <div className="login-collage" aria-hidden="true">
           <div className="login-collage__track login-collage__track--top">
-            {[...loginPhotos, ...loginPhotos].map((photo, index) => (
+            {[...loginCarouselPhotos, ...loginCarouselPhotos].map((photo, index) => (
               <div className={`login-photo ${photo.className}`} key={`top-${photo.src}-${index}`}>
-                <img src={photo.src} alt="" loading={index < 6 ? "eager" : "lazy"} />
+                <Image
+                  src={photo.src}
+                  alt=""
+                  fill
+                  sizes="(max-width: 640px) 42vw, 24vw"
+                  quality={58}
+                  loading={index < 3 ? "eager" : "lazy"}
+                />
               </div>
             ))}
           </div>
 
           <div className="login-collage__track login-collage__track--bottom">
-            {[...loginPhotos, ...loginPhotos].map((photo, index) => (
+            {[...loginCarouselPhotos, ...loginCarouselPhotos].map((photo, index) => (
               <div className={`login-photo ${photo.className}`} key={`bottom-${photo.src}-${index}`}>
-                <img src={photo.src} alt="" loading={index < 6 ? "eager" : "lazy"} />
+                <Image
+                  src={photo.src}
+                  alt=""
+                  fill
+                  sizes="(max-width: 640px) 42vw, 24vw"
+                  quality={58}
+                  loading="lazy"
+                />
               </div>
             ))}
           </div>
@@ -390,7 +416,11 @@ export default function Home() {
               </div>
 
               <div className="flex flex-col gap-6 py-4">
-                {loadingPhotos ? (
+                {contentError ? (
+                  <div className="mx-4 rounded-2xl bg-red-50 p-4 text-center text-sm text-red-600">
+                    {contentError}
+                  </div>
+                ) : loadingPhotos ? (
                   <div className="text-center p-8 text-gray-400">Carregando feed...</div>
                 ) : [...photos.map(p => ({ type: 'photo' as const, data: p })), ...messages.map(m => ({ type: 'message' as const, data: m }))]
                   .sort((a, b) => {
