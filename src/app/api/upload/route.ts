@@ -16,6 +16,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     const filename = searchParams.get('filename');
     const fileType = searchParams.get('fileType') || 'application/octet-stream';
     const guestName = searchParams.get('guestName') || 'Anonimo';
+    const guestEmail = searchParams.get('guestEmail') || '';
+    const userId = searchParams.get('userId') || guestEmail;
 
     if (!filename || !request.body) {
       return NextResponse.json({ error: 'Faltando arquivo ou nome' }, { status: 400 });
@@ -63,11 +65,20 @@ export async function POST(request: Request): Promise<NextResponse> {
     const mediaType = fileType.startsWith('video/') ? 'video' : 'image';
 
     // Salvar no banco de dados
-    const { error: dbError } = await supabase
+    let { error: dbError } = await supabase
       .from('photos')
       .insert([
-        { url: publicUrl, guest_name: guestName, guest_image: guestImage, media_type: mediaType }
+        { url: publicUrl, guest_name: guestName, guest_email: guestEmail, guest_image: guestImage, user_id: userId, media_type: mediaType }
       ]);
+
+    if (dbError) {
+      const fallback = await supabase
+        .from('photos')
+        .insert([
+          { url: publicUrl, guest_name: guestName, guest_image: guestImage, media_type: mediaType }
+        ]);
+      dbError = fallback.error;
+    }
 
     if (dbError) {
       throw dbError;

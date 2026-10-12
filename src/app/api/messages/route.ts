@@ -42,17 +42,26 @@ export async function POST(request: Request) {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body = await request.json();
-    const { guest_name, guest_email, guest_image, message } = body;
+    const { user_id, guest_name, guest_email, guest_image, message } = body;
 
     if (!guest_name || !message) {
       return NextResponse.json({ error: "Nome e mensagem são obrigatórios" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    let { error } = await supabase
       .from('messages')
       .insert([
-        { guest_name, guest_email, guest_image, message }
+        { user_id: user_id || guest_email, guest_name, guest_email, guest_image, message }
       ]);
+
+    if (error) {
+      const fallback = await supabase
+        .from('messages')
+        .insert([
+          { guest_name, guest_email, guest_image, message }
+        ]);
+      error = fallback.error;
+    }
 
     if (error) {
       throw error;

@@ -11,19 +11,31 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const body = await request.json();
-    const { photo_id, guest_name, guest_email, guest_image, text } = body;
+    const { photo_id, user_id, guest_name, guest_email, guest_image, text } = body;
 
     if (!photo_id || !guest_name || !text) {
       return NextResponse.json({ error: "Faltando dados obrigatórios" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('comments')
       .insert([
-        { photo_id, guest_name, guest_email, guest_image, text }
+        { photo_id, user_id: user_id || guest_email, guest_name, guest_email, guest_image, text }
       ])
       .select()
       .single();
+
+    if (error) {
+      const fallback = await supabase
+        .from('comments')
+        .insert([
+          { photo_id, guest_name, guest_email, guest_image, text }
+        ])
+        .select()
+        .single();
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) throw error;
 

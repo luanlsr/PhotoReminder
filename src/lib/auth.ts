@@ -10,9 +10,15 @@ export const authOptions: NextAuthOptions = {
   ],
   secret: process.env.NEXTAUTH_SECRET || "super_secret_for_development",
   callbacks: {
+    async jwt({ token, profile }) {
+      if (profile?.sub) {
+        token.sub = profile.sub;
+      }
+      return token;
+    },
     async session({ session, token }) {
       if (session.user) {
-        // You can attach additional data to session here if needed
+        (session.user as { id?: string }).id = token.sub;
       }
       return session;
     },

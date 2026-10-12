@@ -11,19 +11,31 @@ export async function POST(request: Request) {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const body = await request.json();
-    const { photo_id, guest_email } = body;
+    const { photo_id, guest_email, user_id } = body;
+    const userId = user_id || guest_email;
 
     if (!photo_id || !guest_email) {
       return NextResponse.json({ error: "Faltando dados" }, { status: 400 });
     }
 
     // Verificar se já curtiu
-    const { data: existingLike, error: checkError } = await supabase
+    let { data: existingLike, error: checkError } = await supabase
       .from('likes')
       .select('id')
       .eq('photo_id', photo_id)
-      .eq('guest_email', guest_email)
+      .or(`user_id.eq.${userId},guest_email.eq.${guest_email}`)
       .maybeSingle();
+
+    if (checkError) {
+      const fallback = await supabase
+        .from('likes')
+        .select('id')
+        .eq('photo_id', photo_id)
+        .eq('guest_email', guest_email)
+        .maybeSingle();
+      existingLike = fallback.data;
+      checkError = fallback.error;
+    }
 
     if (checkError) throw checkError;
 
@@ -38,9 +50,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ liked: false });
     } else {
       // Adicionar curtida
-      const { error: insertError } = await supabase
+      let { error: insertError } = await supabase
         .from('likes')
-        .insert([{ photo_id, guest_email }]);
+        .insert([{ photo_id, guest_email, user_id: userId }]);
+
+      if (insertError) {
+        const fallback = await supabase
+          .from('likes')
+          .insert([{ photo_id, guest_email }]);
+        insertError = fallback.error;
+      }
       
       if (insertError) throw insertError;
       return NextResponse.json({ liked: true });

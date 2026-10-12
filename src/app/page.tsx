@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
-import { Camera, Image as ImageIcon, UploadCloud, X, CheckCircle2, Heart, AlertCircle, LogOut, Home as HomeIcon, LayoutGrid, MessageSquare, User, Send, Users, Film } from "lucide-react";
+import { Camera, Image as ImageIcon, UploadCloud, X, CheckCircle2, Heart, AlertCircle, LogOut, Home as HomeIcon, LayoutGrid, MessageSquare, User, Send, Users, Film, Share2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signIn, signOut } from "next-auth/react";
 
@@ -10,18 +10,22 @@ import { useSession, signIn, signOut } from "next-auth/react";
 type Photo = {
   id: string;
   name: string;
+  user_id?: string;
   url: string;
   createdAt: string;
+  guest_email?: string;
   guest_image?: string;
   media_type?: string;
-  likes: { guest_email: string }[];
+  likes: { guest_email?: string; user_id?: string }[];
   comments: Comment[];
 };
 
 type Comment = {
   id: string;
+  user_id?: string;
   guest_name: string;
-  guest_image: string;
+  guest_email?: string;
+  guest_image?: string;
   text: string;
   created_at: string;
 };
@@ -33,6 +37,13 @@ type Message = {
   guest_image: string;
   message: string;
   created_at: string;
+};
+
+type SessionUserWithId = {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
 };
 
 const loginPhotoStyles = [
@@ -89,15 +100,57 @@ export default function Home() {
     signIn("google", { callbackUrl: "/" });
   };
 
+  const getSessionUser = (): SessionUserWithId | null => {
+    return (session?.user as SessionUserWithId | undefined) || null;
+  };
+
+  const isCurrentUser = (userId?: string, email?: string) => {
+    const user = getSessionUser();
+    return Boolean(
+      (userId && user?.id && userId === user.id) ||
+      (email && user?.email && email === user.email)
+    );
+  };
+
+  const isPhotoLikedByCurrentUser = (photo: Photo) => {
+    return photo.likes.some((like) => isCurrentUser(like.user_id, like.guest_email));
+  };
+
+  const handleShare = async (photo: Photo) => {
+    const shareUrl = photo.url;
+    const shareData = {
+      title: "Momento do casamento",
+      text: `Veja esta lembranca de ${photo.name} no album da Lais e do Luan.`,
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+        await navigator.share(shareData);
+        return;
+      }
+
+      await navigator.clipboard.writeText(shareUrl);
+      setErrorModal({
+        show: true,
+        message: "Link da midia copiado. Agora voce pode colar no WhatsApp, Instagram ou outro app.",
+      });
+    } catch (error) {
+      console.error("Erro ao compartilhar:", error);
+    }
+  };
+
   const handleLike = async (photoId: string) => {
-    if (!session?.user?.email) return;
+    const user = getSessionUser();
+    if (!user?.email) return;
 
     try {
       const res = await fetch("/api/likes", {
         method: "POST",
         body: JSON.stringify({
           photo_id: photoId,
-          guest_email: session.user.email
+          guest_email: user.email,
+          user_id: user.id,
         })
       });
 
@@ -119,6 +172,7 @@ export default function Home() {
         method: "POST",
         body: JSON.stringify({
           photo_id: selectedPhotoForComments.id,
+          user_id: (session.user as SessionUserWithId).id,
           guest_name: session.user.name,
           guest_email: session.user.email,
           guest_image: session.user.image,
@@ -223,6 +277,7 @@ export default function Home() {
     const guestName = session?.user?.name || "Anonimo";
     const guestEmail = session?.user?.email || "";
     const guestImage = session?.user?.image || "";
+    const userId = (session?.user as SessionUserWithId | undefined)?.id || "";
 
     try {
       let completed = 0;
@@ -233,7 +288,8 @@ export default function Home() {
           fileType: file.type,
           guestName,
           guestEmail,
-          guestImage
+          guestImage,
+          userId,
         });
 
         const response = await fetch(`/api/upload?${urlParams.toString()}`, {
@@ -289,6 +345,7 @@ export default function Home() {
           guest_name: session?.user?.name || "Anonimo",
           guest_email: session?.user?.email || "",
           guest_image: session?.user?.image || "",
+          user_id: (session?.user as SessionUserWithId | undefined)?.id || "",
           message: newMessage
         })
       });
@@ -439,7 +496,7 @@ export default function Home() {
 
                       if (item.type === 'photo') {
                         const photo = item.data;
-                        const isLiked = photo.likes.some(l => l.guest_email === session?.user?.email);
+                        const isLiked = isPhotoLikedByCurrentUser(photo);
 
                         return (
                           <motion.div
@@ -487,6 +544,9 @@ export default function Home() {
                                 <button onClick={() => setSelectedPhotoForComments(photo)} className="flex items-center gap-1">
                                   <MessageSquare className="w-6 h-6" />
                                   {photo.comments.length > 0 && <span className="text-xs font-semibold">{photo.comments.length}</span>}
+                                </button>
+                                <button onClick={() => handleShare(photo)} className="flex items-center gap-1">
+                                  <Share2 className="w-6 h-6" />
                                 </button>
                               </div>
                             </div>
@@ -559,7 +619,7 @@ export default function Home() {
                   photos
                     .filter(p => {
                       if (gallerySubTab === 'videos') return p.media_type === 'video';
-                      if (gallerySubTab === 'likes') return p.likes.some(l => l.guest_email === session?.user?.email);
+                      if (gallerySubTab === 'likes') return isPhotoLikedByCurrentUser(p);
                       return true;
                     })
                     .map((photo) => (
@@ -872,12 +932,16 @@ export default function Home() {
             
             <div className="absolute bottom-0 left-0 right-0 p-8 flex justify-center gap-8 bg-gradient-to-t from-black/60 to-transparent">
               <button onClick={() => handleLike(selectedMedia.id)} className="flex flex-col items-center gap-1">
-                <Heart className={`w-8 h-8 ${selectedMedia.likes.some(l => l.guest_email === session?.user?.email) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
+                <Heart className={`w-8 h-8 ${isPhotoLikedByCurrentUser(selectedMedia) ? 'fill-red-500 text-red-500' : 'text-white'}`} />
                 <span className="text-white text-xs font-medium">{selectedMedia.likes.length} curtidas</span>
               </button>
               <button onClick={() => setSelectedPhotoForComments(selectedMedia)} className="flex flex-col items-center gap-1">
                 <MessageSquare className="w-8 h-8 text-white" />
                 <span className="text-white text-xs font-medium">{selectedMedia.comments.length} comentários</span>
+              </button>
+              <button onClick={() => handleShare(selectedMedia)} className="flex flex-col items-center gap-1">
+                <Share2 className="w-8 h-8 text-white" />
+                <span className="text-white text-xs font-medium">compartilhar</span>
               </button>
             </div>
           </motion.div>
