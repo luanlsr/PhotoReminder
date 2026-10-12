@@ -11,7 +11,16 @@ const normalizePrivateKey = (privateKey: string) => {
   return privateKey.replace(/^"|"$/g, "").replace(/\\n/g, "\n");
 };
 
-export const isGoogleDriveUploadConfigured = () => {
+const hasOAuthUploadConfig = () => {
+  return Boolean(
+    process.env.GOOGLE_DRIVE_FOLDER_ID &&
+    process.env.GOOGLE_CLIENT_ID &&
+    process.env.GOOGLE_CLIENT_SECRET &&
+    process.env.GOOGLE_DRIVE_REFRESH_TOKEN
+  );
+};
+
+const hasServiceAccountUploadConfig = () => {
   return Boolean(
     process.env.GOOGLE_DRIVE_FOLDER_ID &&
     process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
@@ -19,22 +28,46 @@ export const isGoogleDriveUploadConfigured = () => {
   );
 };
 
-export const uploadToGoogleDrive = async ({ buffer, filename, mimeType }: UploadToDriveInput) => {
-  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+export const isGoogleDriveUploadConfigured = () => {
+  return hasOAuthUploadConfig() || hasServiceAccountUploadConfig();
+};
+
+const getGoogleDriveAuth = () => {
+  if (hasOAuthUploadConfig()) {
+    const oauth = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+
+    oauth.setCredentials({
+      refresh_token: process.env.GOOGLE_DRIVE_REFRESH_TOKEN,
+    });
+
+    return oauth;
+  }
+
   const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const privateKey = process.env.GOOGLE_PRIVATE_KEY;
 
-  if (!folderId || !clientEmail || !privateKey) {
+  if (!clientEmail || !privateKey) {
     throw new Error("Google Drive não configurado");
   }
 
-  const auth = new google.auth.JWT({
+  return new google.auth.JWT({
     email: clientEmail,
     key: normalizePrivateKey(privateKey),
     scopes: ["https://www.googleapis.com/auth/drive"],
   });
+};
 
-  const drive = google.drive({ version: "v3", auth });
+export const uploadToGoogleDrive = async ({ buffer, filename, mimeType }: UploadToDriveInput) => {
+  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+
+  if (!folderId || !isGoogleDriveUploadConfigured()) {
+    throw new Error("Google Drive não configurado");
+  }
+
+  const drive = google.drive({ version: "v3", auth: getGoogleDriveAuth() });
 
   const createdFile = await drive.files.create({
     requestBody: {

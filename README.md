@@ -21,25 +21,25 @@ Pasta criada para o casamento:
 - URL: [Google Drive](https://drive.google.com/drive/folders/19M0GI9bvSrm5WojotE78Jsv7TelCVfUr)
 - ID para usar nas variáveis: `19M0GI9bvSrm5WojotE78Jsv7TelCVfUr`
 
-### Configuração necessária
+### Configuração necessária para Drive pessoal
+
+Conta de serviço não tem cota própria no `Meu Drive`. Para Gmail/Drive pessoal, use OAuth com refresh token da conta dona da pasta.
 
 1. No Google Cloud, abra o mesmo projeto usado no OAuth do login.
 2. Ative a API `Google Drive API`.
-3. Vá em `IAM e administrador` → `Contas de serviço` → `Criar conta de serviço`.
-4. Crie uma chave JSON para essa conta de serviço.
-5. Copie do JSON:
-   - `client_email` para `GOOGLE_SERVICE_ACCOUNT_EMAIL`
-   - `private_key` para `GOOGLE_PRIVATE_KEY`
-6. No Google Drive, compartilhe a pasta `PhotoReminder - Casamento Laís e Luan` com o e-mail da service account como `Editor`.
-7. Configure estas variáveis no Vercel e no `.env` local:
+3. Gere um refresh token para sua conta Google com o escopo `https://www.googleapis.com/auth/drive.file`.
+4. Configure estas variáveis no Vercel e no `.env` local:
 
 ```bash
 GOOGLE_DRIVE_FOLDER_ID="19M0GI9bvSrm5WojotE78Jsv7TelCVfUr"
-GOOGLE_SERVICE_ACCOUNT_EMAIL="nome-da-service-account@projeto.iam.gserviceaccount.com"
-GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+GOOGLE_CLIENT_ID="seu-oauth-client-id"
+GOOGLE_CLIENT_SECRET="seu-oauth-client-secret"
+GOOGLE_DRIVE_REFRESH_TOKEN="refresh-token-da-conta-dona-do-drive"
 ```
 
-Enquanto essas três variáveis não estiverem configuradas, o upload fica bloqueado. A partir desta versão, fotos e vídeos não são mais salvos no Supabase Storage.
+Enquanto essas variáveis não estiverem configuradas, o upload fica bloqueado. A partir desta versão, fotos e vídeos não são mais salvos no Supabase Storage.
+
+Service Account só deve ser usada se a pasta estiver em um Shared Drive do Google Workspace. Nesse caso, também são aceitas as variáveis `GOOGLE_SERVICE_ACCOUNT_EMAIL` e `GOOGLE_PRIVATE_KEY`.
 
 ## Supabase
 

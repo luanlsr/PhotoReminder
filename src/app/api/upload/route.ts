@@ -47,7 +47,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     if (!isGoogleDriveUploadConfigured()) {
       return NextResponse.json(
-        { error: 'Google Drive ainda não configurado. Configure GOOGLE_DRIVE_FOLDER_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL e GOOGLE_PRIVATE_KEY.' },
+        { error: 'Google Drive ainda não configurado. Configure GOOGLE_DRIVE_FOLDER_ID, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET e GOOGLE_DRIVE_REFRESH_TOKEN.' },
         { status: 500 }
       );
     }
