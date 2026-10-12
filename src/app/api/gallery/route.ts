@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
+import { getGoogleDriveDownloadUrl, getGoogleDriveImageUrl } from "@/lib/google-drive";
 
 export const dynamic = 'force-dynamic';
 
@@ -54,18 +55,27 @@ export async function GET() {
           String(photo.url || '').includes('drive.google.com')
         );
       })
-      .map((photo: any) => ({
-        id: photo.id,
-        name: photo.guest_name,
-        user_id: photo.user_id,
-        guest_email: photo.guest_email,
-        guest_image: photo.guest_image,
-        url: photo.url,
-        media_type: photo.media_type || 'image',
-        createdAt: photo.created_at,
-        likes: photo.likes || [],
-        comments: photo.comments || []
-      }));
+      .map((photo: any) => {
+        const mediaType = photo.media_type || 'image';
+        const driveUrl = photo.drive_file_id
+          ? mediaType === 'video'
+            ? getGoogleDriveDownloadUrl(photo.drive_file_id)
+            : getGoogleDriveImageUrl(photo.drive_file_id)
+          : photo.url;
+
+        return {
+          id: photo.id,
+          name: photo.guest_name,
+          user_id: photo.user_id,
+          guest_email: photo.guest_email,
+          guest_image: photo.guest_image,
+          url: driveUrl,
+          media_type: mediaType,
+          createdAt: photo.created_at,
+          likes: photo.likes || [],
+          comments: photo.comments || []
+        };
+      });
 
     return NextResponse.json({ photos: formattedPhotos });
   } catch (error) {

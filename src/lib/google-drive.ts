@@ -7,6 +7,14 @@ type UploadToDriveInput = {
   mimeType: string;
 };
 
+export const getGoogleDriveImageUrl = (fileId: string, size = 1600) => {
+  return `https://drive.google.com/thumbnail?id=${fileId}&sz=w${size}`;
+};
+
+export const getGoogleDriveDownloadUrl = (fileId: string) => {
+  return `https://drive.google.com/uc?export=download&id=${fileId}`;
+};
+
 const normalizePrivateKey = (privateKey: string) => {
   return privateKey.replace(/^"|"$/g, "").replace(/\\n/g, "\n");
 };
@@ -100,6 +108,8 @@ export const uploadToGoogleDrive = async ({ buffer, filename, mimeType }: Upload
   return {
     fileId,
     webViewLink: createdFile.data.webViewLink || `https://drive.google.com/file/d/${fileId}/view`,
-    publicUrl: `https://drive.google.com/uc?export=view&id=${fileId}`,
+    publicUrl: mimeType.startsWith("image/")
+      ? getGoogleDriveImageUrl(fileId)
+      : getGoogleDriveDownloadUrl(fileId),
   };
 };

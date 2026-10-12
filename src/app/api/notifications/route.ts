@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getGoogleDriveImageUrl } from "@/lib/google-drive";
 
 export const dynamic = "force-dynamic";
 
 type PhotoRow = {
   id: string;
   url: string;
+  drive_file_id?: string;
   guest_name?: string;
   guest_email?: string;
   user_id?: string;
@@ -36,6 +38,11 @@ const getDisplayName = (name?: string, email?: string) => {
   return "Alguém";
 };
 
+const getNotificationPhotoUrl = (photo?: PhotoRow) => {
+  if (!photo) return "";
+  return photo.drive_file_id ? getGoogleDriveImageUrl(photo.drive_file_id, 500) : photo.url;
+};
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -56,7 +63,7 @@ export async function GET(request: Request) {
 
     const photosResult = await supabase
       .from("photos")
-      .select("id,url,guest_name,guest_email,user_id")
+      .select("id,url,drive_file_id,guest_name,guest_email,user_id")
       .or(`user_id.eq.${userId || email},guest_email.eq.${email}`);
     let photos = photosResult.data as PhotoRow[] | null;
     let photosError = photosResult.error;
@@ -132,7 +139,7 @@ export async function GET(request: Request) {
           id: `like-${like.id}`,
           type: "like" as const,
           photo_id: like.photo_id,
-          photo_url: photo?.url || "",
+          photo_url: getNotificationPhotoUrl(photo),
           actor_name: getDisplayName(undefined, like.guest_email),
           actor_email: like.guest_email,
           created_at: like.created_at,
@@ -147,7 +154,7 @@ export async function GET(request: Request) {
           id: `comment-${comment.id}`,
           type: "comment" as const,
           photo_id: comment.photo_id,
-          photo_url: photo?.url || "",
+          photo_url: getNotificationPhotoUrl(photo),
           actor_name: getDisplayName(comment.guest_name, comment.guest_email),
           actor_email: comment.guest_email,
           actor_image: comment.guest_image,
